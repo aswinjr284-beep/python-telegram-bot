@@ -1,0 +1,55 @@
+from telegram import (
+    Bot, Update, LabeledPrice
+)
+from telegram.ext import (
+    Application, CommandHandler,
+    MessageHandler, filters, PreCheckoutQueryHandler, ContextTypes
+)
+
+BOT_TOKEN = "YOUR_BOT_TOKEN"
+
+# Replace with your actual provider token for Stars
+# (set in @BotFather → /setpayment)
+PROVIDER_TOKEN = "STARS_PROVIDER_TOKEN"
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Welcome! Type /buy to unlock the premium photo 🔒")
+
+async def buy(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    title = "Premium Photo"
+    description = "Unlock this photo using Telegram Stars ⭐"
+    payload = "photo_payload"
+    currency = "XTR"  # Stars currency
+    prices = [LabeledPrice("Unlock Photo", 50)]  # Price: 50 Stars
+
+    await context.bot.send_invoice(
+        chat_id, title, description, payload,
+        PROVIDER_TOKEN, currency, prices
+    )
+
+async def precheckout(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.pre_checkout_query
+    if query.invoice_payload != "photo_payload":
+        await query.answer(ok=False, error_message="Something went wrong.")
+    else:
+        await query.answer(ok=True)
+
+async def successful_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("✅ Payment received! Here’s your unlocked photo:")
+    await context.bot.send_photo(
+        chat_id=update.message.chat_id,
+        photo="https://example.com/mysecretphoto.jpg"
+    )
+
+def main():
+    app = Application.builder().token(BOT_TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("buy", buy))
+    app.add_handler(PreCheckoutQueryHandler(precheckout))
+    app.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment))
+
+    app.run_polling()
+
+if __name__ == "__main__":
+    main()
